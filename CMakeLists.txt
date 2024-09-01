@@ -3,6 +3,7 @@ project(babel_engine)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -lgmp -lgmpxx")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fstandalone-debug")
 
 include_directories(include lib)
 

@@ -85,6 +85,33 @@ mpz_class baseToNum(const std::string &s, const int base) {
 }
 
 
+std::string fitToLength(const std::string &text, const int length, const bool padRandom) {
+    if (text.length() >= length)
+        // Truncate the result
+        return text.substr(text.length() - length);
+
+    if (!padRandom)
+        // Pad the result with spaces
+        return text + std::string(length - text.length(), ' ');
+
+    std::string result;
+    // Generate random text to pad the result
+    std::mt19937 generator(text.length());
+    std::uniform_int_distribution<int> placementDistrib(0, length - text.length() - 1);
+    int placement = placementDistrib(generator);
+    while (result.length() < placement) {
+        std::uniform_int_distribution<int> distribution(0, TEXT_BASE - 1);
+        result += TEXT_CHARSET[distribution(generator)];
+    }
+    result += text;
+    while (result.length() < length) {
+        std::uniform_int_distribution<int> distribution(0, TEXT_BASE - 1);
+        result += TEXT_CHARSET[distribution(generator)];
+    }
+    return result;
+}
+
+
 std::string searchByContent(const std::string& rawText) {
 
     // Generate a random library coordinate to serve as the basis for the address
@@ -97,8 +124,7 @@ std::string searchByContent(const std::string& rawText) {
             text += lower;
     }
 
-    text = text.substr(0, MAX_PAGE_LEN);  // Truncate text to max_page_content_length
-    text.resize(MAX_PAGE_LEN, ' ');  // Pad text with spaces to max_page_content_length
+    text = fitToLength(text, MAX_PAGE_LEN, true);
 
     // Convert text to a number
     mpz_class textSum = {0};
@@ -140,18 +166,6 @@ std::string searchByAddress(const std::string &address) {
     std::string baseEncodedText = numToBase(seed, ADDRESS_BASE);
     // Convert the address base-encoded text to the text charset
     std::string resultText = numToBase(baseToNum(baseEncodedText, ADDRESS_BASE), TEXT_BASE);
-
-    if (resultText.length() < MAX_PAGE_LEN) {
-        // Generate random text to pad the result
-        std::mt19937 generator(resultText.length());
-        while (resultText.length() < MAX_PAGE_LEN) {
-            std::uniform_int_distribution<int> distribution(0, TEXT_BASE - 1);
-            resultText += TEXT_CHARSET[distribution(generator)];
-        }
-    } else if (resultText.length() > MAX_PAGE_LEN) {
-        // Truncate the result
-        resultText = resultText.substr(resultText.length() - MAX_PAGE_LEN);
-    }
-
-    return resultText;
+    // Truncate the result to the maximum page length
+    return resultText.substr(resultText.length() - MAX_PAGE_LEN);
 }

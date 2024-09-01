@@ -95,7 +95,7 @@ TEST_CASE("Test baseToNum()") {
 
 TEST_CASE("Test Reverse Search") {
 
-    const std::string searchStr = "hello there";
+    const std::string searchStr = "hello there general kenobi";
     const std::string address = searchByContent(searchStr);
     const std::string content = searchByAddress(address);
 
