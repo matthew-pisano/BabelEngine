@@ -11,6 +11,7 @@
 const int TEXT_BASE = TEXT_CHARSET.length();
 const int ADDRESS_BASE = ADDRESS_CHARSET.length();
 
+
 std::string getBaseCharset(const int base) {
     if (base == ADDRESS_BASE) return ADDRESS_CHARSET;
     if (base == TEXT_BASE) return TEXT_CHARSET;
@@ -36,13 +37,14 @@ std::string genRandomPaddedInt(const int maxValue) {
 }
 
 
-int genRandomLibraryCoordinate() {
-    const std::string wall = genRandomPaddedInt(WALLS_PER_HEXAGON);
-    const std::string shelf = genRandomPaddedInt(SHELVES_PER_WALL);
-    const std::string volume = genRandomPaddedInt(VOLUMES_PER_SHELF);
-    const std::string page = genRandomPaddedInt(PAGES_PER_VOLUME);
+LibraryCoordinate genRandomLibraryCoordinate() {
+    LibraryCoordinate coord;
+    coord.wall = genRandomPaddedInt(WALLS_PER_HEXAGON);
+    coord.shelf = genRandomPaddedInt(SHELVES_PER_WALL);
+    coord.volume = genRandomPaddedInt(VOLUMES_PER_SHELF);
+    coord.page = genRandomPaddedInt(PAGES_PER_VOLUME);
 
-    return std::stoi(page + volume + shelf + wall);
+    return coord;
 }
 
 
@@ -112,10 +114,8 @@ std::string fitToLength(const std::string &text, const int length, const bool pa
 }
 
 
-std::string searchByContent(const std::string& rawText) {
+std::string searchByContent(const std::string& rawText, const bool padRandom) {
 
-    // Generate a random library coordinate to serve as the basis for the address
-    const int libraryCoordinate = genRandomLibraryCoordinate();
     // Filter out non-alphanumeric characters and convert to lowercase
     std::string text;
     for (int i = 0; i < rawText.length(); i++) {
@@ -124,7 +124,7 @@ std::string searchByContent(const std::string& rawText) {
             text += lower;
     }
 
-    text = fitToLength(text, MAX_PAGE_LEN, true);
+    text = fitToLength(text, MAX_PAGE_LEN, padRandom);
 
     // Convert text to a number
     mpz_class textSum = {0};
@@ -137,35 +137,44 @@ std::string searchByContent(const std::string& rawText) {
         mult *= TEXT_BASE;
     }
 
-    const mpz_class address = libraryCoordinate * mult + textSum;
+    // Generate a random library coordinate to serve as the basis for the address
+    LibraryCoordinate coord = genRandomLibraryCoordinate();
+    const int coordSeed = std::stoi(coord.page + coord.volume + coord.shelf + coord.wall);
+    const std::string hexagonAddr = numToBase(coordSeed * mult + textSum, ADDRESS_BASE);
     // Encode the base-10 address as a string represented by the address charset
-    return numToBase(address, ADDRESS_BASE);
+    return hexagonAddr + ":" + coord.wall + ":" + coord.shelf + ":" + coord.volume + ":" + coord.page;
+}
+
+
+LibraryCoordinate getAddressComponents(const std::string &address) {
+    std::istringstream ss(address);
+    LibraryCoordinate coord;
+    std::getline(ss, coord.hexagon, ':');
+    std::getline(ss, coord.wall, ':');
+    std::getline(ss, coord.shelf, ':');
+    std::getline(ss, coord.volume, ':');
+    std::getline(ss, coord.page, ':');
+
+    // Pad the volume and page with zeros
+    while (coord.volume.length() < 2) coord.volume = "0" + coord.volume;
+    while (coord.page.length() < 3) coord.page = "0" + coord.page;
+    return coord;
 }
 
 
 std::string searchByAddress(const std::string &address) {
-    std::istringstream ss(address);
-    std::string hexagonAddress, wall, shelf, volume, page;
-    std::getline(ss, hexagonAddress, ':');
-    std::getline(ss, wall, ':');
-    std::getline(ss, shelf, ':');
-    std::getline(ss, volume, ':');
-    std::getline(ss, page, ':');
+    LibraryCoordinate coord = getAddressComponents(address);
 
-    // Pad the volume and page with zeros
-    volume.insert(0, 2 - volume.length(), '0');
-    page.insert(0, 3 - page.length(), '0');
-
-    int libraryCoordinate = std::stoi(page + volume + shelf + wall);
-
-    mpz_class addrAsBase = baseToNum(hexagonAddress, ADDRESS_BASE);
     mpz_class mult;
     mpz_class bigTextBase = TEXT_BASE;
     mpz_pow_ui(mult.get_mpz_t(), bigTextBase.get_mpz_t(), MAX_PAGE_LEN);
-    mpz_class seed = addrAsBase - libraryCoordinate * mult;
-    std::string baseEncodedText = numToBase(seed, ADDRESS_BASE);
+
+    const mpz_class numericalAddr = baseToNum(coord.hexagon, ADDRESS_BASE);
+    const int coordSeed = std::stoi(coord.page + coord.volume + coord.shelf + coord.wall);
+    const mpz_class seed = numericalAddr - coordSeed * mult;
+    const std::string baseEncodedText = numToBase(seed, ADDRESS_BASE);
     // Convert the address base-encoded text to the text charset
     std::string resultText = numToBase(baseToNum(baseEncodedText, ADDRESS_BASE), TEXT_BASE);
-    // Truncate the result to the maximum page length
-    return resultText.substr(resultText.length() - MAX_PAGE_LEN);
+
+    return resultText;
 }

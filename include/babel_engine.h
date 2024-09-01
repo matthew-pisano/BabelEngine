@@ -16,6 +16,15 @@ constexpr int VOLUMES_PER_SHELF = 32;
 constexpr int PAGES_PER_VOLUME = 410;
 
 
+struct LibraryCoordinate {
+   std::string hexagon;
+   std::string wall;
+   std::string shelf;
+   std::string volume;
+   std::string page;
+};
+
+
 /**
  * Get the characters that compose a number encoded in a given base
  * @param base The base to get the charset for
@@ -36,7 +45,7 @@ std::string genRandomPaddedInt(int maxValue);
  * Generate a random library coordinate
  * @return A random library coordinate
  */
-int genRandomLibraryCoordinate();
+LibraryCoordinate genRandomLibraryCoordinate();
 
 
 /**
@@ -58,11 +67,20 @@ mpz_class baseToNum(const std::string &s, int base);
 
 
 /**
+ * Get the address components of a library coordinate
+ * @param address The address to get the components of
+ * @return The coordinate components of the address
+ */
+LibraryCoordinate getAddressComponents(const std::string &address);
+
+
+/**
  * Search for a page by its content
  * @param rawText The content to search for
+ * @param padRandom Whether to pad the text with random characters
  * @return The address of the page
  */
-std::string searchByContent(const std::string& rawText);
+std::string searchByContent(const std::string& rawText, bool padRandom);
 
 
 /**

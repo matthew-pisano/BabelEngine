@@ -9,13 +9,15 @@
 
 #include "babel_engine.h"
 
-TEST_CASE("Test getBaseCharset()") {
+TEST_CASE("Test getBaseCharset") {
+
     REQUIRE( getBaseCharset(36) == ADDRESS_CHARSET );
     REQUIRE( getBaseCharset(29) == TEXT_CHARSET );
 }
 
 
-TEST_CASE("Test genRandomPaddedInt()") {
+TEST_CASE("Test genRandomPaddedInt") {
+
     int maxValue;
 
     SECTION("Test Single Digit") {
@@ -41,13 +43,15 @@ TEST_CASE("Test genRandomPaddedInt()") {
 }
 
 
-TEST_CASE("Test genRandomLibraryCoordinate()") {
-    const int coord = genRandomLibraryCoordinate();
-    REQUIRE( coord <= std::pow(10, 7) );
+TEST_CASE("Test genRandomLibraryCoordinate") {
+
+    LibraryCoordinate coord = genRandomLibraryCoordinate();
+    const int coordSeed = std::stoi(coord.page + coord.volume + coord.shelf + coord.wall);
+    REQUIRE( coordSeed <= std::pow(10, 7) );
 }
 
 
-TEST_CASE("Test numToBase()") {
+TEST_CASE("Test numToBase") {
 
     int base;
     SECTION("Test Base 36") {
@@ -70,7 +74,7 @@ TEST_CASE("Test numToBase()") {
 }
 
 
-TEST_CASE("Test baseToNum()") {
+TEST_CASE("Test baseToNum") {
 
     int base;
     SECTION("Test Base 36") {
@@ -92,13 +96,47 @@ TEST_CASE("Test baseToNum()") {
     }
 }
 
+TEST_CASE("Test getAddressComponents") {
+
+    const std::string address = "simpleaddress:3322:4:4:300";
+    LibraryCoordinate coord = getAddressComponents(address);
+    REQUIRE( coord.hexagon == "simpleaddress" );
+    REQUIRE( coord.wall == "3322" );
+    REQUIRE( coord.shelf == "4" );
+    REQUIRE( coord.volume == "04" );
+    REQUIRE( coord.page == "300" );
+}
+
 
 TEST_CASE("Test Reverse Search") {
 
     const std::string searchStr = "hello there general kenobi";
-    const std::string address = searchByContent(searchStr);
+    const std::string address = searchByContent(searchStr, true);
     const std::string content = searchByAddress(address);
 
     REQUIRE( content.length() == MAX_PAGE_LEN );
     REQUIRE( content.find(searchStr, 0) != std::string::npos );
+}
+
+
+TEST_CASE("Test Address Search") {
+
+    const std::string address = "simpleaddress:3:4:4:300";
+    const std::string first_content = searchByAddress(address);
+    const std::string second_content = searchByAddress(address);
+
+    REQUIRE( first_content == second_content );
+}
+
+
+TEST_CASE("Test Content Search") {
+
+    const std::string searchStr = "hello there general kenobi";
+    const std::string first_address = searchByContent(searchStr, false);
+    const std::string second_address = searchByContent(searchStr, false);
+
+    const std::string first_content = searchByAddress(first_address);
+    const std::string second_content = searchByAddress(second_address);
+
+    REQUIRE( first_content == second_content );
 }
