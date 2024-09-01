@@ -2,11 +2,13 @@ cmake_minimum_required(VERSION 3.28)
 project(babel_engine)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -lgmp -lgmpxx")
 
 include_directories(include lib)
 
 add_library(babel_engine STATIC src/babel_engine.cpp)
 
+include_directories(/usr/include)
 find_package(Catch2 3 REQUIRED)
 
 add_executable(tests test/test_lib.cpp)

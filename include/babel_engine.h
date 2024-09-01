@@ -1,11 +1,20 @@
 #ifndef BABEL_ENGINE_LIBRARY_H
 #define BABEL_ENGINE_LIBRARY_H
 
-#include <string>
-#include <BigInt/BigInt.hpp>
 
-const std::string TEXT_CHARSET = "abcdefghijklmnopqrstuvwxyz, .";
-const std::string ADDRESS_CHARSET = "0123456789abcdefghijklmnopqrstuvwxyz";
+#include <gmpxx.h>
+#include <string>
+
+inline std::string TEXT_CHARSET = "abcdefghijklmnopqrstuvwxyz, .";
+inline std::string ADDRESS_CHARSET = "0123456789abcdefghijklmnopqrstuvwxyz";
+
+constexpr int MAX_PAGE_LEN = 3200;
+
+constexpr int WALLS_PER_HEXAGON = 4;
+constexpr int SHELVES_PER_WALL = 5;
+constexpr int VOLUMES_PER_SHELF = 32;
+constexpr int PAGES_PER_VOLUME = 410;
+
 
 /**
  * Get the characters that compose a number encoded in a given base
@@ -36,7 +45,7 @@ int genRandomLibraryCoordinate();
  * @param base The base to convert the number to
  * @return The number as a string in the given base
  */
-std::string NumToBase(BigInt x, int base);
+std::string numToBase(mpz_class x, int base);
 
 
 /**
@@ -45,7 +54,7 @@ std::string NumToBase(BigInt x, int base);
  * @param base The base of the string
  * @return The number represented by the string
  */
-BigInt BaseToNum(const std::string &s, int base);
+mpz_class baseToNum(const std::string &s, int base);
 
 
 /**

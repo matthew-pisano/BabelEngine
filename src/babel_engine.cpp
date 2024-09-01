@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <iomanip>
+#include <iostream>
 #include <random>
 #include <string>
 #include <sstream>
@@ -9,13 +10,6 @@
 
 const int TEXT_BASE = TEXT_CHARSET.length();
 const int ADDRESS_BASE = ADDRESS_CHARSET.length();
-constexpr int MAX_PAGE_LEN = 3200;
-
-constexpr int WALLS_PER_HEXAGON = 4;
-constexpr int SHELVES_PER_WALL = 5;
-constexpr int VOLUMES_PER_SHELF = 32;
-constexpr int PAGES_PER_VOLUME = 410;
-
 
 std::string getBaseCharset(const int base) {
     if (base == ADDRESS_BASE) return ADDRESS_CHARSET;
@@ -52,17 +46,18 @@ int genRandomLibraryCoordinate() {
 }
 
 
-std::string NumToBase(BigInt x, const int base) {
+std::string numToBase(mpz_class x, const int base) {
     std::string baseCharset = getBaseCharset(base);
 
-    if (x == 0) return {1, baseCharset[0]};  // Zero is zero in any base
+    if (x == 0) return baseCharset.substr(0, 1);  // Zero is zero in any base
 
     std::string chars;
     const int sign = x < 0 ? -1 : 1;
     x *= sign;
 
     while (x > 0) {
-        chars.push_back(baseCharset[(x % base).to_int()]);
+        mpz_class rem = x % base;
+        chars.push_back(baseCharset[rem.get_ui()]);
         x /= base;
     }
 
@@ -73,12 +68,12 @@ std::string NumToBase(BigInt x, const int base) {
 }
 
 
-BigInt BaseToNum(const std::string &s, const int base) {
-    std::string baseCharset = getBaseCharset(base);
+mpz_class baseToNum(const std::string &s, const int base) {
+    const std::string baseCharset = getBaseCharset(base);
 
-    if (s == baseCharset[0]) return {0};  // Zero is zero in any base
+    if (s.length() == 1 && s[0] == baseCharset[0]) return {0};  // Zero is zero in any base
 
-    BigInt x = {0};
+    mpz_class x = {0};
     const bool isNeg = s[0] == '-';
 
     for (int i = (isNeg ? 1 : 0); i < s.length(); ++i) {
@@ -96,24 +91,29 @@ std::string searchByContent(const std::string& rawText) {
     const int libraryCoordinate = genRandomLibraryCoordinate();
     // Filter out non-alphanumeric characters and convert to lowercase
     std::string text;
-    for (int i = 0; i < rawText.length(); i++)
-        if (TEXT_CHARSET.find(rawText[i]) != std::string::npos)
-            text += std::tolower(rawText[i]);
+    for (int i = 0; i < rawText.length(); i++) {
+        char lower = std::tolower(rawText[i]);
+        if (TEXT_CHARSET.find(lower) != std::string::npos)
+            text += lower;
+    }
 
     text = text.substr(0, MAX_PAGE_LEN);  // Truncate text to max_page_content_length
     text.resize(MAX_PAGE_LEN, ' ');  // Pad text with spaces to max_page_content_length
 
     // Convert text to a number
-    BigInt textSum = {0};
+    mpz_class textSum = {0};
+    mpz_class mult = {1};
     for (int i = 0; i < text.length(); ++i) {
         const char c = text[text.length() - 1 - i];
         const int charValue = std::isalpha(c) ? c - 'a' : c == '.' ? 28 : 27;
-        textSum += charValue * pow(TEXT_BASE, i);
+        textSum += charValue * mult;
+
+        mult *= TEXT_BASE;
     }
 
-    const BigInt address = libraryCoordinate * pow(TEXT_BASE, MAX_PAGE_LEN) + textSum;
+    const mpz_class address = libraryCoordinate * mult + textSum;
     // Encode the base-10 address as a string represented by the address charset
-    return NumToBase(address, ADDRESS_BASE);
+    return numToBase(address, ADDRESS_BASE);
 }
 
 
@@ -132,11 +132,14 @@ std::string searchByAddress(const std::string &address) {
 
     int libraryCoordinate = std::stoi(page + volume + shelf + wall);
 
-    BigInt addrAsBase = BaseToNum(hexagonAddress, ADDRESS_BASE);
-    BigInt seed = addrAsBase - libraryCoordinate * pow(TEXT_BASE, MAX_PAGE_LEN);
-    std::string baseEncodedText = NumToBase(seed, ADDRESS_BASE);
+    mpz_class addrAsBase = baseToNum(hexagonAddress, ADDRESS_BASE);
+    mpz_class mult;
+    mpz_class bigTextBase = TEXT_BASE;
+    mpz_pow_ui(mult.get_mpz_t(), bigTextBase.get_mpz_t(), MAX_PAGE_LEN);
+    mpz_class seed = addrAsBase - libraryCoordinate * mult;
+    std::string baseEncodedText = numToBase(seed, ADDRESS_BASE);
     // Convert the address base-encoded text to the text charset
-    std::string resultText = NumToBase(BaseToNum(baseEncodedText, ADDRESS_BASE), TEXT_BASE);
+    std::string resultText = numToBase(baseToNum(baseEncodedText, ADDRESS_BASE), TEXT_BASE);
 
     if (resultText.length() < MAX_PAGE_LEN) {
         // Generate random text to pad the result
