@@ -5,8 +5,9 @@
 #include <gmpxx.h>
 #include <string>
 
-inline std::string TEXT_CHARSET = "abcdefghijklmnopqrstuvwxyz, .";
-inline std::string ADDRESS_CHARSET = "0123456789abcdefghijklmnopqrstuvwxyz";
+inline std::string BASE29_CHARSET = "abcdefghijklmnopqrstuvwxyz, .";
+inline std::string BASE36_CHARSET = "0123456789abcdefghijklmnopqrstuvwxyz";
+inline std::string BASE64_CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 constexpr int MAX_PAGE_LEN = 3200;
 
@@ -78,16 +79,21 @@ LibraryCoordinate getAddressComponents(const std::string &address);
  * Search for a page by its content
  * @param rawText The content to search for
  * @param padRandom Whether to pad the text with random characters
+ * @param textBase The base that the text is encoded into
+ * @param addrBase The base to encode the address into
+ * @param ignoreCase Whether to encode text, regardless of case
  * @return The address of the page
  */
-std::string searchByContent(const std::string& rawText, bool padRandom);
+std::string searchByContent(const std::string& rawText, int textBase, int addrBase, bool padRandom, bool ignoreCase);
 
 
 /**
  * Search for a page by its address
  * @param address The address to search for
+ * @param textBase The base to encode the text into
+ * @param addrBase The base that the address is encoded into
  * @return The content of the page
  */
-std::string searchByAddress(const std::string &address);
+std::string searchByAddress(const std::string &address, int textBase, int addrBase);
 
 #endif //BABEL_ENGINE_LIBRARY_H

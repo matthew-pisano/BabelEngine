@@ -8,13 +8,15 @@
 #include <sstream>
 
 
-const int TEXT_BASE = TEXT_CHARSET.length();
-const int ADDRESS_BASE = ADDRESS_CHARSET.length();
-
-
 std::string getBaseCharset(const int base) {
-    if (base == ADDRESS_BASE) return ADDRESS_CHARSET;
-    if (base == TEXT_BASE) return TEXT_CHARSET;
+    if (base == 29) return BASE29_CHARSET;
+    if (base == 36) return BASE36_CHARSET;
+    if (base == 64) return BASE64_CHARSET;
+    if (base == 128) {
+        std::string charset;
+        for (unsigned char i = 0; i < 128; ++i) charset.push_back(i);
+        return charset;
+    }
     throw std::invalid_argument("Invalid base: "+std::to_string(base));
 }
 
@@ -87,7 +89,7 @@ mpz_class baseToNum(const std::string &s, const int base) {
 }
 
 
-std::string fitToLength(const std::string &text, const int length, const bool padRandom) {
+std::string fitToLength(const std::string &text, const int length, const std::string &charset, const bool padRandom) {
     if (text.length() >= length)
         // Truncate the result
         return text.substr(text.length() - length);
@@ -102,29 +104,32 @@ std::string fitToLength(const std::string &text, const int length, const bool pa
     std::uniform_int_distribution<int> placementDistrib(0, length - text.length() - 1);
     int placement = placementDistrib(generator);
     while (result.length() < placement) {
-        std::uniform_int_distribution<int> distribution(0, TEXT_BASE - 1);
-        result += TEXT_CHARSET[distribution(generator)];
+        std::uniform_int_distribution<int> distribution(0, charset.length() - 1);
+        result += charset[distribution(generator)];
     }
     result += text;
     while (result.length() < length) {
-        std::uniform_int_distribution<int> distribution(0, TEXT_BASE - 1);
-        result += TEXT_CHARSET[distribution(generator)];
+        std::uniform_int_distribution<int> distribution(0, charset.length() - 1);
+        result += charset[distribution(generator)];
     }
     return result;
 }
 
 
-std::string searchByContent(const std::string& rawText, const bool padRandom) {
+std::string searchByContent(const std::string& rawText, const int textBase, const int addrBase, const bool padRandom, const bool ignoreCase) {
+
+    const std::string text_charset = getBaseCharset(textBase);
 
     // Filter out non-alphanumeric characters and convert to lowercase
     std::string text;
     for (int i = 0; i < rawText.length(); i++) {
-        char lower = std::tolower(rawText[i]);
-        if (TEXT_CHARSET.find(lower) != std::string::npos)
-            text += lower;
+        char current = rawText[i];
+        if (ignoreCase) current = std::tolower(current);
+        if (text_charset.find(current) != std::string::npos)
+            text += current;
     }
 
-    text = fitToLength(text, MAX_PAGE_LEN, padRandom);
+    text = fitToLength(text, MAX_PAGE_LEN, text_charset, padRandom);
 
     // Convert text to a number
     mpz_class textSum = {0};
@@ -134,13 +139,13 @@ std::string searchByContent(const std::string& rawText, const bool padRandom) {
         const int charValue = std::isalpha(c) ? c - 'a' : c == '.' ? 28 : 27;
         textSum += charValue * mult;
 
-        mult *= TEXT_BASE;
+        mult *= text_charset.length();
     }
 
     // Generate a random library coordinate to serve as the basis for the address
     LibraryCoordinate coord = genRandomLibraryCoordinate();
-    const int coordSeed = std::stoi(coord.page + coord.volume + coord.shelf + coord.wall);
-    const std::string hexagonAddr = numToBase(coordSeed * mult + textSum, ADDRESS_BASE);
+    const mpz_class coordSeed(coord.page + coord.volume + coord.shelf + coord.wall);
+    const std::string hexagonAddr = numToBase(coordSeed * mult + textSum, addrBase);
     // Encode the base-10 address as a string represented by the address charset
     return hexagonAddr + ":" + coord.wall + ":" + coord.shelf + ":" + coord.volume + ":" + coord.page;
 }
@@ -162,19 +167,19 @@ LibraryCoordinate getAddressComponents(const std::string &address) {
 }
 
 
-std::string searchByAddress(const std::string &address) {
+std::string searchByAddress(const std::string &address, const int textBase, const int addrBase) {
     LibraryCoordinate coord = getAddressComponents(address);
 
     mpz_class mult;
-    mpz_class bigTextBase = TEXT_BASE;
+    mpz_class bigTextBase = textBase;
     mpz_pow_ui(mult.get_mpz_t(), bigTextBase.get_mpz_t(), MAX_PAGE_LEN);
 
-    const mpz_class numericalAddr = baseToNum(coord.hexagon, ADDRESS_BASE);
-    const int coordSeed = std::stoi(coord.page + coord.volume + coord.shelf + coord.wall);
+    const mpz_class numericalAddr = baseToNum(coord.hexagon, addrBase);
+    const mpz_class coordSeed(coord.page + coord.volume + coord.shelf + coord.wall);
     const mpz_class seed = numericalAddr - coordSeed * mult;
-    const std::string baseEncodedText = numToBase(seed, ADDRESS_BASE);
+    const std::string baseEncodedText = numToBase(seed, addrBase);
     // Convert the address base-encoded text to the text charset
-    std::string resultText = numToBase(baseToNum(baseEncodedText, ADDRESS_BASE), TEXT_BASE);
+    std::string resultText = numToBase(baseToNum(baseEncodedText, addrBase), textBase);
 
     return resultText;
 }

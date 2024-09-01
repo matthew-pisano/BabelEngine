@@ -11,8 +11,14 @@
 
 TEST_CASE("Test getBaseCharset") {
 
-    REQUIRE( getBaseCharset(36) == ADDRESS_CHARSET );
-    REQUIRE( getBaseCharset(29) == TEXT_CHARSET );
+    REQUIRE( getBaseCharset(29) == BASE29_CHARSET );
+    REQUIRE( getBaseCharset(36) == BASE36_CHARSET );
+    REQUIRE( getBaseCharset(64) == BASE64_CHARSET );
+    std::string base128Charset;
+    for (unsigned char i = 0; i < 128; ++i)
+        base128Charset.push_back(i);
+    REQUIRE( getBaseCharset(128) == base128Charset );
+    REQUIRE_THROWS( getBaseCharset(127) );
 }
 
 
@@ -111,19 +117,27 @@ TEST_CASE("Test getAddressComponents") {
 TEST_CASE("Test Reverse Search") {
 
     const std::string searchStr = "hello there general kenobi";
-    const std::string address = searchByContent(searchStr, true);
-    const std::string content = searchByAddress(address);
+    SECTION("Test Text Base 29") {
+        const std::string address = searchByContent(searchStr, 29, 36, true, true);
+        const std::string content = searchByAddress(address, 29, 36);
+        REQUIRE( content.length() == MAX_PAGE_LEN );
+        REQUIRE( content.find(searchStr, 0) != std::string::npos );
+    }
 
-    REQUIRE( content.length() == MAX_PAGE_LEN );
-    REQUIRE( content.find(searchStr, 0) != std::string::npos );
+    SECTION("Test Text Base 128") {
+        const std::string address = searchByContent(searchStr, 128, 36, false, true);
+        const std::string content = searchByAddress(address, 128, 36);
+        REQUIRE( content.length() == MAX_PAGE_LEN );
+        REQUIRE( content.find(searchStr, 0) != std::string::npos );
+    }
 }
 
 
 TEST_CASE("Test Address Search") {
 
     const std::string address = "simpleaddress:3:4:4:300";
-    const std::string first_content = searchByAddress(address);
-    const std::string second_content = searchByAddress(address);
+    const std::string first_content = searchByAddress(address, 29, 36);
+    const std::string second_content = searchByAddress(address, 29, 36);
 
     REQUIRE( first_content == second_content );
 }
@@ -132,11 +146,11 @@ TEST_CASE("Test Address Search") {
 TEST_CASE("Test Content Search") {
 
     const std::string searchStr = "hello there general kenobi";
-    const std::string first_address = searchByContent(searchStr, false);
-    const std::string second_address = searchByContent(searchStr, false);
+    const std::string first_address = searchByContent(searchStr, 29, 36, false, true);
+    const std::string second_address = searchByContent(searchStr, 29, 36, false, true);
 
-    const std::string first_content = searchByAddress(first_address);
-    const std::string second_content = searchByAddress(second_address);
+    const std::string first_content = searchByAddress(first_address, 29, 36);
+    const std::string second_content = searchByAddress(second_address, 29, 36);
 
     REQUIRE( first_content == second_content );
 }
