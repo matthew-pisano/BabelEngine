@@ -65,6 +65,22 @@ LibraryCoordinate genRandomLibraryCoordinate() {
 }
 
 
+LibraryCoordinate getAddressComponents(const std::string &address) {
+    std::istringstream ss(address);
+    LibraryCoordinate coord;
+    std::getline(ss, coord.hexagon, ':');
+    std::getline(ss, coord.wall, ':');
+    std::getline(ss, coord.shelf, ':');
+    std::getline(ss, coord.volume, ':');
+    std::getline(ss, coord.page, ':');
+
+    // Pad the volume and page with zeros
+    while (coord.volume.length() < 2) coord.volume = "0" + coord.volume;
+    while (coord.page.length() < 3) coord.page = "0" + coord.page;
+    return coord;
+}
+
+
 std::vector<unsigned char> numToBase(mpz_class x, const int base) {
     std::vector<unsigned char> baseCharset = getBaseCharset(base);
 
@@ -160,19 +176,11 @@ std::string computeAddress(const std::vector<unsigned char>& data, const bool pa
 }
 
 
-LibraryCoordinate getAddressComponents(const std::string &address) {
-    std::istringstream ss(address);
-    LibraryCoordinate coord;
-    std::getline(ss, coord.hexagon, ':');
-    std::getline(ss, coord.wall, ':');
-    std::getline(ss, coord.shelf, ':');
-    std::getline(ss, coord.volume, ':');
-    std::getline(ss, coord.page, ':');
-
-    // Pad the volume and page with zeros
-    while (coord.volume.length() < 2) coord.volume = "0" + coord.volume;
-    while (coord.page.length() < 3) coord.page = "0" + coord.page;
-    return coord;
+std::string computeStreamAddress(std::istream& stream, const bool padRandom) {
+    std::vector<unsigned char> signedData;
+    unsigned char c;
+    while (stream >> c) signedData.push_back(c);
+    return computeAddress(signedData, padRandom);
 }
 
 
@@ -191,4 +199,10 @@ std::vector<unsigned char> search(const std::string &address) {
     std::vector<unsigned char> resultText = numToBase(seed, 256);
 
     return {resultText.begin(), resultText.begin() + MAX_PAGE_LEN};
+}
+
+
+void searchStream(const std::string &address, std::ostream &stream) {
+    std::vector<unsigned char> contentBytes = search(address);
+    for (const unsigned char &c : contentBytes) stream << c;
 }

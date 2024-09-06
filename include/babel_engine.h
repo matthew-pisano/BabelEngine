@@ -99,10 +99,27 @@ std::string computeAddress(const std::vector<unsigned char>& data, bool padRando
 
 
 /**
+ * Compute the address of the data provided by a stream
+ * @param stream The stream to get data from
+ * @param padRandom Whether to pad with random bytes, otherwise pad with zeros
+ * @return The address of the stream's data
+ */
+std::string computeStreamAddress(std::istream& stream, bool padRandom);
+
+
+/**
  * Search for a byte sequence by its address
  * @param address The address to search for
  * @return The byte sequence at the given address
  */
 std::vector<unsigned char> search(const std::string &address);
+
+
+/**
+ * Search for a byte sequence by its address
+ * @param address The address to search for
+ * @param stream The stream to write the byte sequence to
+ */
+void searchStream(const std::string &address, std::ostream &stream);
 
 #endif //BABEL_ENGINE_LIBRARY_H

@@ -4,10 +4,43 @@
 
 #include <cmath>
 #include <iostream>
+#include <strstream>
 
 #include <catch2/catch_test_macros.hpp>
 
 #include "babel_engine.h"
+
+
+class VectorStreamBuf final : public std::streambuf {
+public:
+    explicit VectorStreamBuf(std::vector<unsigned char>& vec) : vec_(vec) {}
+
+protected:
+    // Called when there is no space left in the buffer, forcing it to write to the vector.
+    int overflow(const int ch) override {
+        if (ch != EOF)
+            vec_.push_back(static_cast<unsigned char>(ch));
+        return ch;
+    }
+
+    // Write a sequence of characters to the buffer
+    std::streamsize xsputn(const char* s, const std::streamsize count) override {
+        vec_.insert(vec_.end(), s, s + count);
+        return count;
+    }
+
+private:
+    std::vector<unsigned char>& vec_;
+};
+
+
+class VectorOStream final : public std::ostream {
+public:
+    explicit VectorOStream(std::vector<unsigned char>& vec) : std::ostream(&buf_), buf_(vec) {}
+
+private:
+    VectorStreamBuf buf_;
+};
 
 TEST_CASE("Test getBaseCharset") {
 
@@ -120,13 +153,28 @@ TEST_CASE("Test getAddressComponents") {
 }
 
 
-void testReverseSearch(const std::string &searchStr) {
-    const std::string address = computeAddress(str2Vec(searchStr), true);
+void reverseSearch(const std::string &searchStr) {
+    const std::vector<unsigned char> searchBytes = str2Vec(searchStr);
+    const std::string address = computeAddress(searchBytes, true);
     std::vector<unsigned char> contentBytes = search(address);
+
     REQUIRE( contentBytes.size() == MAX_PAGE_LEN );
-    const std::vector<unsigned char> searchStrBytes = str2Vec(searchStr);
     REQUIRE( std::search(contentBytes.begin(), contentBytes.end(),
-        searchStrBytes.begin(), searchStrBytes.end()) != contentBytes.end() );
+        searchBytes.begin(), searchBytes.end()) != contentBytes.end() );
+}
+
+
+void reverseStreamSearch(const std::string &searchStr) {
+    const std::vector<unsigned char> searchBytes = str2Vec(searchStr);
+    std::istrstream istream(reinterpret_cast<const char*>(searchBytes.data()), searchBytes.size());
+    const std::string address = computeStreamAddress(istream, true);
+    std::vector<unsigned char> contentBytes;
+    VectorOStream ostream(contentBytes);
+    searchStream(address, ostream);
+
+    REQUIRE( contentBytes.size() == MAX_PAGE_LEN );
+    REQUIRE( std::search(contentBytes.begin(), contentBytes.end(),
+        searchBytes.begin(), searchBytes.end()) != contentBytes.end() );
 }
 
 
@@ -135,17 +183,20 @@ TEST_CASE("Test Reverse Search") {
     std::string searchStr;
     SECTION("Test ASCII Text") {
         searchStr = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        testReverseSearch(searchStr);
+        reverseSearch(searchStr);
+        reverseStreamSearch(searchStr);
     }
 
     SECTION("Test Non-ASCII Text") {
         searchStr = "АА̀А̂А̄ӒБВГҐДЂЃЕЀЕ̄Е̂ЁЄЖЗЗ́ЅИІЇꙆЍИ̂ӢЙЈКЛЉМНЊОО̀О̂ŌӦПРСС́ТЋЌУУ̀У̂ӮЎӰФХЦЧЏШЩꙎЪЪ̀ЫЬѢЭЮЮ̀ЯЯ̀ѦѪѨѬѮѰѲѴѶѺѼѾѿ";
-        testReverseSearch(searchStr);
+        reverseSearch(searchStr);
+        reverseStreamSearch(searchStr);
     }
 
     SECTION("Test Random Bytes") {
         searchStr = "\xaf\xdb\x1c\x51\x24\x21\x1e\x87\x3b\x9d\x24\x60\xfe\xca\xf0\x60\x9a\x17\xc3\x18\x50\x8f\x13\xf2\xba\xdd\xdd\x6c\x29\xee\x1a\x99";
-        testReverseSearch(searchStr);
+        reverseSearch(searchStr);
+        reverseStreamSearch(searchStr);
     }
 }
 
