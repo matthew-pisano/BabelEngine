@@ -8,6 +8,9 @@
 #include <sstream>
 
 
+using namespace Babel;
+
+
 /**
  * Find the index of a value in a vector
  * @param val The char to get the index of
@@ -22,14 +25,14 @@ int charToIndex(const unsigned char &val, const int base) {
 }
 
 
-std::vector<unsigned char> getBaseCharset(const int base) {
+std::vector<unsigned char> Babel::getBaseCharset(const int base) {
     if (base == 64) return BASE64_CHARSET;
     if (base == 256) return BASE256_CHARSET;
     throw std::invalid_argument("Invalid base: "+std::to_string(base));
 }
 
 
-std::string genRandomPaddedInt(const int maxValue) {
+std::string Babel::genRandomPaddedInt(const int maxValue) {
     std::random_device rd;
     std::mt19937 gen(rd());
     // Generate a random integer between 1 and maxValue inclusive
@@ -47,7 +50,7 @@ std::string genRandomPaddedInt(const int maxValue) {
 }
 
 
-LibraryCoordinate genRandomLibraryCoordinate() {
+LibraryCoordinate Babel::genRandomLibraryCoordinate() {
     LibraryCoordinate coord;
     coord.wall = genRandomPaddedInt(WALLS_PER_HEXAGON);
     coord.shelf = genRandomPaddedInt(SHELVES_PER_WALL);
@@ -58,7 +61,7 @@ LibraryCoordinate genRandomLibraryCoordinate() {
 }
 
 
-LibraryCoordinate getAddressComponents(const std::string &address) {
+LibraryCoordinate Babel::getAddressComponents(const std::string &address) {
     std::istringstream ss(address);
     LibraryCoordinate coord;
     std::getline(ss, coord.hexagon, ':');
@@ -74,7 +77,7 @@ LibraryCoordinate getAddressComponents(const std::string &address) {
 }
 
 
-std::vector<unsigned char> numToBase(mpz_class x, const int base) {
+std::vector<unsigned char> Babel::numToBase(mpz_class x, const int base) {
     std::vector<unsigned char> baseCharset = getBaseCharset(base);
 
     if (x == 0) return {baseCharset[0]};  // Zero is zero in any base
@@ -96,7 +99,7 @@ std::vector<unsigned char> numToBase(mpz_class x, const int base) {
 }
 
 
-mpz_class baseToNum(const std::vector<unsigned char> &vec, const int base) {
+mpz_class Babel::baseToNum(const std::vector<unsigned char> &vec, const int base) {
     const std::vector<unsigned char> baseCharset = getBaseCharset(base);
 
     if (vec.size() == 1 && vec[0] == baseCharset[0]) return {0};  // Zero is zero in any base
@@ -147,7 +150,7 @@ std::vector<unsigned char> fitToLength(const std::vector<unsigned char> &data, c
 }
 
 
-std::string computeAddress(const std::vector<unsigned char>& data, const bool padRandom) {
+std::string Babel::computeAddress(const std::vector<unsigned char>& data, const bool padRandom) {
     const std::vector<unsigned char> paddedData = fitToLength(data, MAX_PAGE_LEN, padRandom);
 
     // Convert data to a number
@@ -169,7 +172,7 @@ std::string computeAddress(const std::vector<unsigned char>& data, const bool pa
 }
 
 
-std::string computeStreamAddress(std::istream& stream, const bool padRandom) {
+std::string Babel::computeStreamAddress(std::istream& stream, const bool padRandom) {
     std::vector<unsigned char> signedData;
     unsigned char c;
     while (stream >> c) signedData.push_back(c);
@@ -177,7 +180,7 @@ std::string computeStreamAddress(std::istream& stream, const bool padRandom) {
 }
 
 
-std::vector<unsigned char> search(const std::string &address) {
+std::vector<unsigned char> Babel::search(const std::string &address) {
     LibraryCoordinate coord = getAddressComponents(address);
 
     mpz_class mult;
@@ -195,7 +198,7 @@ std::vector<unsigned char> search(const std::string &address) {
 }
 
 
-void searchStream(const std::string &address, std::ostream &stream) {
+void Babel::searchStream(const std::string &address, std::ostream &stream) {
     std::vector<unsigned char> contentBytes = search(address);
     for (const unsigned char &c : contentBytes) stream << c;
 }

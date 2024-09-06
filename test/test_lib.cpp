@@ -11,6 +11,9 @@
 #include "babel_engine.h"
 
 
+using namespace Babel;
+
+
 class VectorStreamBuf final : public std::streambuf {
 public:
     explicit VectorStreamBuf(std::vector<unsigned char>& vec) : vec_(vec) {}
