@@ -8,24 +8,17 @@
 #include <sstream>
 
 
-int vectorFind(const std::vector<unsigned char> &vec, const unsigned char &val) {
-    for (int i = 0; i < vec.size(); ++i)
-        if (vec[i] == val) return i;
-    throw std::invalid_argument("Value not found in vector");
-}
+/**
+ * Find the index of a value in a vector
+ * @param val The char to get the index of
+ * @return The index of the value in the vector
+ */
+int charToIndex(const unsigned char &val, const int base) {
+    if (base == 256) return val;
 
-
-std::vector<unsigned char> str2Vec(const std::string &str) {
-    return {str.begin(), str.end()};
-}
-
-
-std::vector<unsigned char> range2Vec(const int start, const int end) {
-    std::vector<unsigned char> charset;
-    for (unsigned char i = start; i < end-1; ++i)
-        charset.push_back(i);
-    charset.push_back(end-1);
-    return charset;
+    for (int i = 0; i < BASE64_CHARSET.size(); ++i)
+        if (BASE64_CHARSET[i] == val) return i;
+    throw std::invalid_argument("Value not found in address charset: "+std::to_string(val));
 }
 
 
@@ -113,7 +106,7 @@ mpz_class baseToNum(const std::vector<unsigned char> &vec, const int base) {
 
     for (int i = (isNeg ? 1 : 0); i < vec.size(); ++i) {
         x *= base;
-        x += vectorFind(baseCharset, vec[i]);  // Add the value of the character to the number
+        x += charToIndex(vec[i], base);  // Add the value of the character to the number
     }
 
     return x * (isNeg? -1 : 1);
@@ -192,7 +185,7 @@ std::vector<unsigned char> search(const std::string &address) {
     // Exponentiate the base to the maximum page length and store the result in mult
     mpz_pow_ui(mult.get_mpz_t(), bigBase.get_mpz_t(), MAX_PAGE_LEN);
 
-    const mpz_class numericalAddr = baseToNum(str2Vec(coord.hexagon), 64);
+    const mpz_class numericalAddr = baseToNum({coord.hexagon.begin(), coord.hexagon.end()}, 64);
     const mpz_class coordSeed(coord.page + coord.volume + coord.shelf + coord.wall);
     const mpz_class seed = numericalAddr - coordSeed * mult;
     // Convert the address base-encoded text to the text charset

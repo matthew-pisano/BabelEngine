@@ -154,7 +154,7 @@ TEST_CASE("Test getAddressComponents") {
 
 
 void reverseSearch(const std::string &searchStr) {
-    const std::vector<unsigned char> searchBytes = str2Vec(searchStr);
+    const std::vector<unsigned char> searchBytes = {searchStr.begin(), searchStr.end()};
     const std::string address = computeAddress(searchBytes, true);
     std::vector<unsigned char> contentBytes = search(address);
 
@@ -165,7 +165,7 @@ void reverseSearch(const std::string &searchStr) {
 
 
 void reverseStreamSearch(const std::string &searchStr) {
-    const std::vector<unsigned char> searchBytes = str2Vec(searchStr);
+    const std::vector<unsigned char> searchBytes = {searchStr.begin(), searchStr.end()};
     std::istrstream istream(reinterpret_cast<const char*>(searchBytes.data()), searchBytes.size());
     const std::string address = computeStreamAddress(istream, true);
     std::vector<unsigned char> contentBytes;
@@ -214,8 +214,8 @@ TEST_CASE("Test Address Search Consistency") {
 TEST_CASE("Test Content Search Consistency") {
 
     const std::string searchStr = "hello there general kenobi";
-    const std::string first_address = computeAddress(str2Vec(searchStr), false);
-    const std::string second_address = computeAddress(str2Vec(searchStr), false);
+    const std::string first_address = computeAddress({searchStr.begin(), searchStr.end()}, false);
+    const std::string second_address = computeAddress({searchStr.begin(), searchStr.end()}, false);
 
     const std::vector<unsigned char> first_content = search(first_address);
     const std::vector<unsigned char> second_content = search(second_address);

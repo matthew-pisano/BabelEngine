@@ -6,13 +6,16 @@
 #include <string>
 #include <vector>
 
+inline std::string BASE64_CHARSET_STR_ = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+inline std::vector<unsigned char> BASE64_CHARSET = {BASE64_CHARSET_STR_.begin(), BASE64_CHARSET_STR_.end()};
 
-std::vector<unsigned char> str2Vec(const std::string &str);
-
-std::vector<unsigned char> range2Vec(int start, int end);
-
-inline std::vector<unsigned char> BASE64_CHARSET = str2Vec("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/");
-inline std::vector<unsigned char> BASE256_CHARSET = range2Vec(0, 256);
+// Build the charset for base 256
+inline std::vector<unsigned char> build256Charset() {
+    std::vector<unsigned char> charset;
+    for (int i = 0; i < 256; ++i) charset.push_back(i);
+    return charset;
+}
+inline std::vector<unsigned char> BASE256_CHARSET = build256Charset();
 
 constexpr int MAX_PAGE_LEN = 1024 * 10;
 
@@ -29,15 +32,6 @@ struct LibraryCoordinate {
    std::string volume;
    std::string page;
 };
-
-
-/**
- * Find the index of a value in a vector
- * @param vec The vector to search
- * @param val The value to search for
- * @return The index of the value in the vector
- */
-int vectorFind(const std::vector<unsigned char> &vec, const unsigned char &val);
 
 
 /**
