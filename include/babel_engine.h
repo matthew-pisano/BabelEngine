@@ -14,7 +14,7 @@ std::vector<unsigned char> range2Vec(int start, int end);
 inline std::vector<unsigned char> BASE64_CHARSET = str2Vec("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/");
 inline std::vector<unsigned char> BASE256_CHARSET = range2Vec(0, 256);
 
-constexpr int MAX_PAGE_LEN = 10000;
+constexpr int MAX_PAGE_LEN = 1024 * 10;
 
 constexpr int WALLS_PER_HEXAGON = 4;
 constexpr int SHELVES_PER_WALL = 5;
@@ -64,25 +64,25 @@ LibraryCoordinate genRandomLibraryCoordinate();
 
 
 /**
- * Convert a number to a string in a given base
+ * Convert a GMP number to a vector of bytes in a given base
  * @param x The number to convert
  * @param base The base to convert the number to
- * @return The number as a string in the given base
+ * @return The number as a vector of bytes
  */
 std::vector<unsigned char> numToBase(mpz_class x, int base);
 
 
 /**
- * Convert a string in a given base to a number
- * @param s The string to convert
+ * Convert a vector of bytes in a given base to a GMP number
+ * @param vec The vector to convert
  * @param base The base of the string
- * @return The number represented by the string
+ * @return The number represented by the vector
  */
-mpz_class baseToNum(const std::vector<unsigned char> &s, int base);
+mpz_class baseToNum(const std::vector<unsigned char> &vec, int base);
 
 
 /**
- * Get the address components of a library coordinate
+ * Get the decomposed components of an address
  * @param address The address to get the components of
  * @return The coordinate components of the address
  */
@@ -90,19 +90,19 @@ LibraryCoordinate getAddressComponents(const std::string &address);
 
 
 /**
- * Search for a page by its content
- * @param rawText The content to search for
- * @param padRandom Whether to pad the text with random characters
- * @return The address of the page
+ * Get the address of a given byte sequence
+ * @param data The data to get the address of
+ * @param padRandom Whether to pad with random bytes, otherwise pad with zeros
+ * @return The address of the byte sequence
  */
-std::string searchByContent(const std::vector<unsigned char>& rawText, bool padRandom);
+std::string computeAddress(const std::vector<unsigned char>& data, bool padRandom);
 
 
 /**
- * Search for a page by its address
+ * Search for a byte sequence by its address
  * @param address The address to search for
- * @return The content of the page
+ * @return The byte sequence at the given address
  */
-std::vector<unsigned char> searchByAddress(const std::string &address);
+std::vector<unsigned char> search(const std::string &address);
 
 #endif //BABEL_ENGINE_LIBRARY_H

@@ -80,88 +80,80 @@ std::vector<unsigned char> numToBase(mpz_class x, const int base) {
         x /= base;
     }
 
-    if (sign < 0) chars.push_back(45);
+    if (sign < 0) chars.push_back(45);  // Add the negative sign
     std::reverse(chars.begin(), chars.end());
 
     return chars;
 }
 
 
-mpz_class baseToNum(const std::vector<unsigned char> &s, const int base) {
+mpz_class baseToNum(const std::vector<unsigned char> &vec, const int base) {
     const std::vector<unsigned char> baseCharset = getBaseCharset(base);
 
-    if (s.size() == 1 && s[0] == baseCharset[0]) return {0};  // Zero is zero in any base
+    if (vec.size() == 1 && vec[0] == baseCharset[0]) return {0};  // Zero is zero in any base
 
     mpz_class x = {0};
-    const bool isNeg = s[0] == static_cast<char>(45);
+    const bool isNeg = vec[0] == static_cast<char>(45);  // Check if the number is negative
 
-    for (int i = (isNeg ? 1 : 0); i < s.size(); ++i) {
+    for (int i = (isNeg ? 1 : 0); i < vec.size(); ++i) {
         x *= base;
-        x += vectorFind(baseCharset, s[i]);
+        x += vectorFind(baseCharset, vec[i]);  // Add the value of the character to the number
     }
 
     return x * (isNeg? -1 : 1);
 }
 
 
-std::vector<unsigned char> fitToLength(const std::vector<unsigned char> &text, const int length, const bool padRandom) {
-    if (text.size() >= length) {
+std::vector<unsigned char> fitToLength(const std::vector<unsigned char> &data, const int length, const bool padRandom) {
+    if (data.size() >= length) {
         // Truncate the result
-        return {text.begin(), text.begin() + length};
+        return {data.begin(), data.begin() + length};
     }
 
     if (!padRandom) {
-        // Pad the result with spaces
-        std::vector result(text);
-        result.resize(length, 64);
+        // Pad the result with zeroes
+        std::vector result(data);
+        result.resize(length, 0);
         return result;
     }
 
-    const std::vector<unsigned char> textCharset = getBaseCharset(256);
+    const std::vector<unsigned char> dataCharset = getBaseCharset(256);
     std::vector<unsigned char> result;
-    // Generate random text to pad the result
-    std::mt19937 generator(text.size());
-    std::uniform_int_distribution<int> placementDistrib(0, length - text.size() - 1);
+    // Generate random data to pad the result
+    std::mt19937 generator(data.size());
+    std::uniform_int_distribution<int> placementDistrib(0, length - data.size() - 1);
     const int placement = placementDistrib(generator);
+    // Add header of random size
     while (result.size() < placement) {
-        std::uniform_int_distribution<int> distribution(0, textCharset.size() - 1);
-        result.push_back(textCharset[distribution(generator)]);
+        std::uniform_int_distribution<int> distribution(0, dataCharset.size() - 1);
+        result.push_back(dataCharset[distribution(generator)]);
     }
-    for (const unsigned char &c : text) result.push_back(c);
+    for (const unsigned char &c : data) result.push_back(c);  // Add the data
+    // Add footer of random size
     while (result.size() < length) {
-        std::uniform_int_distribution<int> distribution(0, textCharset.size() - 1);
-        result.push_back(textCharset[distribution(generator)]);
+        std::uniform_int_distribution<int> distribution(0, dataCharset.size() - 1);
+        result.push_back(dataCharset[distribution(generator)]);
     }
     return result;
 }
 
 
-std::string searchByContent(const std::vector<unsigned char>& rawText, const bool padRandom) {
-    const std::vector<unsigned char> textCharset = getBaseCharset(256);
+std::string computeAddress(const std::vector<unsigned char>& data, const bool padRandom) {
+    const std::vector<unsigned char> paddedData = fitToLength(data, MAX_PAGE_LEN, padRandom);
 
-    // Filter out non-alphanumeric characters and convert to lowercase
-    std::vector<unsigned char> text;
-    for (unsigned char current : rawText) {
-        vectorFind(textCharset, current);  // Check if the character is in the charset
-        text.push_back(current);
-    }
-
-    text = fitToLength(text, MAX_PAGE_LEN, padRandom);
-
-    // Convert text to a number
-    mpz_class textSum = {0};
+    // Convert data to a number
+    mpz_class dataSum = {0};
     mpz_class mult = {1};
-    for (int i = 0; i < text.size(); ++i) {
-        const unsigned char c = text[text.size() - 1 - i];
-        textSum += c * mult;
-
-        mult *= textCharset.size();
+    for (int i = 0; i < paddedData.size(); ++i) {
+        const unsigned char c = paddedData[paddedData.size() - 1 - i];
+        dataSum += c * mult;
+        mult *= 256;  // Multiply by the base
     }
 
     // Generate a random library coordinate to serve as the basis for the address
     LibraryCoordinate coord = genRandomLibraryCoordinate();
     const mpz_class coordSeed(coord.page + coord.volume + coord.shelf + coord.wall);
-    const std::vector<unsigned char> hexagonAddr = numToBase(coordSeed * mult + textSum, 64);
+    const std::vector<unsigned char> hexagonAddr = numToBase(coordSeed * mult + dataSum, 64);
     // Encode the base-10 address as a string represented by the address charset
     const std::string hexagonAddrStr(hexagonAddr.begin(), hexagonAddr.end());
     return hexagonAddrStr + ":" + coord.wall + ":" + coord.shelf + ":" + coord.volume + ":" + coord.page;
@@ -184,19 +176,19 @@ LibraryCoordinate getAddressComponents(const std::string &address) {
 }
 
 
-std::vector<unsigned char> searchByAddress(const std::string &address) {
+std::vector<unsigned char> search(const std::string &address) {
     LibraryCoordinate coord = getAddressComponents(address);
 
     mpz_class mult;
-    mpz_class bigTextBase = {256};
-    mpz_pow_ui(mult.get_mpz_t(), bigTextBase.get_mpz_t(), MAX_PAGE_LEN);
+    mpz_class bigBase = {256};
+    // Exponentiate the base to the maximum page length and store the result in mult
+    mpz_pow_ui(mult.get_mpz_t(), bigBase.get_mpz_t(), MAX_PAGE_LEN);
 
     const mpz_class numericalAddr = baseToNum(str2Vec(coord.hexagon), 64);
     const mpz_class coordSeed(coord.page + coord.volume + coord.shelf + coord.wall);
     const mpz_class seed = numericalAddr - coordSeed * mult;
-    const std::vector<unsigned char> baseEncodedText = numToBase(seed, 64);
     // Convert the address base-encoded text to the text charset
-    std::vector<unsigned char> resultText = numToBase(baseToNum(baseEncodedText, 64), 256);
+    std::vector<unsigned char> resultText = numToBase(seed, 256);
 
     return {resultText.begin(), resultText.begin() + MAX_PAGE_LEN};
 }

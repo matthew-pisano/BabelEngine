@@ -121,8 +121,8 @@ TEST_CASE("Test getAddressComponents") {
 
 
 void testReverseSearch(const std::string &searchStr) {
-    const std::string address = searchByContent(str2Vec(searchStr), true);
-    std::vector<unsigned char> contentBytes = searchByAddress(address);
+    const std::string address = computeAddress(str2Vec(searchStr), true);
+    std::vector<unsigned char> contentBytes = search(address);
     REQUIRE( contentBytes.size() == MAX_PAGE_LEN );
     const std::vector<unsigned char> searchStrBytes = str2Vec(searchStr);
     REQUIRE( std::search(contentBytes.begin(), contentBytes.end(),
@@ -153,8 +153,8 @@ TEST_CASE("Test Reverse Search") {
 TEST_CASE("Test Address Search Consistency") {
 
     const std::string address = "simpleaddress:3:4:4:300";
-    const std::vector<unsigned char> first_content = searchByAddress(address);
-    const std::vector<unsigned char> second_content = searchByAddress(address);
+    const std::vector<unsigned char> first_content = search(address);
+    const std::vector<unsigned char> second_content = search(address);
 
     REQUIRE( first_content == second_content );
 }
@@ -163,11 +163,11 @@ TEST_CASE("Test Address Search Consistency") {
 TEST_CASE("Test Content Search Consistency") {
 
     const std::string searchStr = "hello there general kenobi";
-    const std::string first_address = searchByContent(str2Vec(searchStr), false);
-    const std::string second_address = searchByContent(str2Vec(searchStr), false);
+    const std::string first_address = computeAddress(str2Vec(searchStr), false);
+    const std::string second_address = computeAddress(str2Vec(searchStr), false);
 
-    const std::vector<unsigned char> first_content = searchByAddress(first_address);
-    const std::vector<unsigned char> second_content = searchByAddress(second_address);
+    const std::vector<unsigned char> first_content = search(first_address);
+    const std::vector<unsigned char> second_content = search(second_address);
 
     REQUIRE( first_content == second_content );
 }
