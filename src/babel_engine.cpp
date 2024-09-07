@@ -11,6 +11,10 @@
 using namespace Babel;
 
 
+using random_bytes_engine = std::independent_bits_engine<
+    std::default_random_engine, CHAR_BIT, unsigned char>;
+
+
 /**
  * Find the index of a value in a vector
  * @param val The char to get the index of
@@ -91,18 +95,18 @@ std::vector<unsigned char> Babel::numToBase(mpz_class x, const int base) {
 
     if (x == 0) return {baseCharset[0]};  // Zero is zero in any base
 
+    const int sqrtBase = base == 256 ? 16 : 8;
     std::vector<unsigned char> chars;
     const int sign = x < 0 ? -1 : 1;
-    x *= sign;
-
-    while (x > 0) {
-        mpz_class rem = x % base;
-        chars.push_back(baseCharset[rem.get_ui()]);
-        x /= base;
-    }
+    x *= sign;  // Ensure the number is positive
 
     if (sign < 0) chars.push_back(45);  // Add the negative sign
-    std::reverse(chars.begin(), chars.end());
+    std::string xStr = x.get_str(sqrtBase);
+    if (xStr.length() % 2 != 0) xStr = "0" + xStr;  // Ensure the string has an even length
+    for (int i=0; i<xStr.length(); i+=2) {
+        const int byte = std::stoi(xStr.substr(i, 2), nullptr, sqrtBase);  // Convert the hex string to an integer
+        chars.push_back(baseCharset[byte]);
+    }
 
     return chars;
 }
@@ -113,11 +117,12 @@ mpz_class Babel::baseToNum(const std::vector<unsigned char> &vec, const int base
 
     if (vec.size() == 1 && vec[0] == baseCharset[0]) return {0};  // Zero is zero in any base
 
+    const int baseShift = base == 256 ? 8 : 6;
     mpz_class x = {0};
     const bool isNeg = vec[0] == static_cast<char>(45);  // Check if the number is negative
 
     for (int i = (isNeg ? 1 : 0); i < vec.size(); ++i) {
-        x *= base;
+        x = x << baseShift;
         x += charToIndex(vec[i], base);  // Add the value of the character to the number
     }
 
@@ -138,23 +143,19 @@ std::vector<unsigned char> fitToLength(const std::vector<unsigned char> &data, c
         return result;
     }
 
-    const std::vector<unsigned char> dataCharset = getBaseCharset(256);
-    std::vector<unsigned char> result;
+    std::vector<unsigned char> result(length);
     // Generate random data to pad the result
     std::mt19937 generator(data.size());
     std::uniform_int_distribution<int> placementDistrib(0, length - static_cast<int>(data.size()) - 1);
     const int placement = placementDistrib(generator);
+
+    random_bytes_engine randGenerator;
     // Add header of random size
-    while (result.size() < placement) {
-        std::uniform_int_distribution<int> distribution(0, static_cast<int>(dataCharset.size()) - 1);
-        result.push_back(dataCharset[distribution(generator)]);
-    }
-    for (const unsigned char &c : data) result.push_back(c);  // Add the data
+    std::generate_n(begin(result), placement, std::ref(randGenerator));
+    // Add the data
+    std::copy(data.begin(), data.end(), result.begin() + placement);
     // Add footer of random size
-    while (result.size() < length) {
-        std::uniform_int_distribution<int> distribution(0, static_cast<int>(dataCharset.size()) - 1);
-        result.push_back(dataCharset[distribution(generator)]);
-    }
+    std::generate_n(begin(result) + placement + data.size(), length - placement - data.size(), std::ref(randGenerator));
     return result;
 }
 
@@ -164,16 +165,15 @@ std::string Babel::computeAddress(const std::vector<unsigned char>& data, const 
 
     // Convert data to a number
     mpz_class dataSum = {0};
-    mpz_class mult = {1};
     for (int i = 0; i < paddedData.size(); ++i) {
-        const unsigned char c = paddedData[paddedData.size() - 1 - i];
-        dataSum += c * mult;
-        mult *= 256;  // Multiply by the base
+        const mpz_class c = paddedData[paddedData.size() - 1 - i];
+        dataSum += c << (8 * i);
     }
 
     // Generate a random library coordinate to serve as the basis for the address
     LibraryCoordinate coord = genRandomLibraryCoordinate();
-    const std::vector<unsigned char> hexagonAddr = numToBase(makeCoordSeed(coord) * mult + dataSum, 64);
+    const mpz_class shifted_coord = makeCoordSeed(coord) << (8 * paddedData.size());
+    const std::vector<unsigned char> hexagonAddr = numToBase(shifted_coord + dataSum, 64);
     // Encode the base-10 address as a string represented by the address charset
     const std::string hexagonAddrStr(hexagonAddr.begin(), hexagonAddr.end());
     return hexagonAddrStr + ":" + coord.wall + ":" + coord.shelf + ":" + coord.volume + ":" + coord.page;

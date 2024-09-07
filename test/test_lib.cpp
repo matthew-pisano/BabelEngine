@@ -183,22 +183,27 @@ void reverseStreamSearch(const std::string &searchStr) {
 
 TEST_CASE("Test Reverse Search") {
 
-    std::string searchStr;
+    std::string searchStr = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     SECTION("Test ASCII Text") {
-        searchStr = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
         reverseSearch(searchStr);
+    }
+    SECTION("Test Streamed ASCII Text") {
         reverseStreamSearch(searchStr);
     }
 
+    searchStr = "АА̀А̂А̄ӒБВГҐДЂЃЕЀЕ̄Е̂ЁЄЖЗЗ́ЅИІЇꙆЍИ̂ӢЙЈКЛЉМНЊОО̀О̂ŌӦПРСС́ТЋЌУУ̀У̂ӮЎӰФХЦЧЏШЩꙎЪЪ̀ЫЬѢЭЮЮ̀ЯЯ̀ѦѪѨѬѮѰѲѴѶѺѼѾѿ";
     SECTION("Test Non-ASCII Text") {
-        searchStr = "АА̀А̂А̄ӒБВГҐДЂЃЕЀЕ̄Е̂ЁЄЖЗЗ́ЅИІЇꙆЍИ̂ӢЙЈКЛЉМНЊОО̀О̂ŌӦПРСС́ТЋЌУУ̀У̂ӮЎӰФХЦЧЏШЩꙎЪЪ̀ЫЬѢЭЮЮ̀ЯЯ̀ѦѪѨѬѮѰѲѴѶѺѼѾѿ";
         reverseSearch(searchStr);
+    }
+    SECTION("Test Streamed Non-ASCII Text") {
         reverseStreamSearch(searchStr);
     }
 
+    searchStr = "\xaf\xdb\x1c\x51\x24\x21\x1e\x87\x3b\x9d\x24\x60\xfe\xca\xf0\x60\x9a\x17\xc3\x18\x50\x8f\x13\xf2\xba\xdd\xdd\x6c\x29\xee\x1a\x99";
     SECTION("Test Random Bytes") {
-        searchStr = "\xaf\xdb\x1c\x51\x24\x21\x1e\x87\x3b\x9d\x24\x60\xfe\xca\xf0\x60\x9a\x17\xc3\x18\x50\x8f\x13\xf2\xba\xdd\xdd\x6c\x29\xee\x1a\x99";
         reverseSearch(searchStr);
+    }
+    SECTION("Test Streamed Random Bytes") {
         reverseStreamSearch(searchStr);
     }
 }
@@ -225,4 +230,20 @@ TEST_CASE("Test Content Search Consistency") {
     const std::vector<unsigned char> second_content = search(second_address);
 
     REQUIRE( first_content == second_content );
+}
+
+
+TEST_CASE("Test Compute Address") {
+
+    const std::string searchStr = "hello there general kenobi";
+    const std::string address = computeAddress({searchStr.begin(), searchStr.end()}, true);
+    REQUIRE( !address.empty() );
+}
+
+
+TEST_CASE("Test Search") {
+
+    const std::string address = "simpleaddress:332:4:4:300";
+    const std::vector<unsigned char> content = search(address);
+    REQUIRE( content.size() == MAX_PAGE_LEN );
 }
