@@ -25,6 +25,15 @@ int charToIndex(const unsigned char &val, const int base) {
 }
 
 
+/**
+ * Concatenates the components of a library component and return their big integer representation
+ */
+mpz_class makeCoordSeed(const LibraryCoordinate& coord) {
+    // Certain numbers crash mpz_set_str() without first using std::stoi()
+    return {std::stoi(coord.page + coord.volume + coord.shelf + coord.wall)};
+}
+
+
 std::vector<unsigned char> Babel::getBaseCharset(const int base) {
     if (base == 64) return BASE64_CHARSET;
     if (base == 256) return BASE256_CHARSET;
@@ -39,7 +48,7 @@ std::string Babel::genRandomPaddedInt(const int maxValue) {
     std::uniform_int_distribution<> dist(1, maxValue);
 
     const int randInt = dist(gen);
-    const int padding = std::to_string(maxValue).length();
+    const int padding = static_cast<int>(std::to_string(maxValue).length());
     // Skip padding if the value is 1
     if (padding == 1) return std::to_string(randInt);
 
@@ -133,17 +142,17 @@ std::vector<unsigned char> fitToLength(const std::vector<unsigned char> &data, c
     std::vector<unsigned char> result;
     // Generate random data to pad the result
     std::mt19937 generator(data.size());
-    std::uniform_int_distribution<int> placementDistrib(0, length - data.size() - 1);
+    std::uniform_int_distribution<int> placementDistrib(0, length - static_cast<int>(data.size()) - 1);
     const int placement = placementDistrib(generator);
     // Add header of random size
     while (result.size() < placement) {
-        std::uniform_int_distribution<int> distribution(0, dataCharset.size() - 1);
+        std::uniform_int_distribution<int> distribution(0, static_cast<int>(dataCharset.size()) - 1);
         result.push_back(dataCharset[distribution(generator)]);
     }
     for (const unsigned char &c : data) result.push_back(c);  // Add the data
     // Add footer of random size
     while (result.size() < length) {
-        std::uniform_int_distribution<int> distribution(0, dataCharset.size() - 1);
+        std::uniform_int_distribution<int> distribution(0, static_cast<int>(dataCharset.size()) - 1);
         result.push_back(dataCharset[distribution(generator)]);
     }
     return result;
@@ -164,8 +173,7 @@ std::string Babel::computeAddress(const std::vector<unsigned char>& data, const 
 
     // Generate a random library coordinate to serve as the basis for the address
     LibraryCoordinate coord = genRandomLibraryCoordinate();
-    const mpz_class coordSeed(coord.page + coord.volume + coord.shelf + coord.wall);
-    const std::vector<unsigned char> hexagonAddr = numToBase(coordSeed * mult + dataSum, 64);
+    const std::vector<unsigned char> hexagonAddr = numToBase(makeCoordSeed(coord) * mult + dataSum, 64);
     // Encode the base-10 address as a string represented by the address charset
     const std::string hexagonAddrStr(hexagonAddr.begin(), hexagonAddr.end());
     return hexagonAddrStr + ":" + coord.wall + ":" + coord.shelf + ":" + coord.volume + ":" + coord.page;
@@ -189,8 +197,7 @@ std::vector<unsigned char> Babel::search(const std::string &address) {
     mpz_pow_ui(mult.get_mpz_t(), bigBase.get_mpz_t(), MAX_PAGE_LEN);
 
     const mpz_class numericalAddr = baseToNum({coord.hexagon.begin(), coord.hexagon.end()}, 64);
-    const mpz_class coordSeed(coord.page + coord.volume + coord.shelf + coord.wall);
-    const mpz_class seed = numericalAddr - coordSeed * mult;
+    const mpz_class seed = numericalAddr - makeCoordSeed(coord) * mult;
     // Convert the address base-encoded text to the text charset
     std::vector<unsigned char> resultText = numToBase(seed, 256);
 

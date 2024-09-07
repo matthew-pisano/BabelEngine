@@ -169,7 +169,7 @@ void reverseSearch(const std::string &searchStr) {
 
 void reverseStreamSearch(const std::string &searchStr) {
     const std::vector<unsigned char> searchBytes = {searchStr.begin(), searchStr.end()};
-    std::istrstream istream(reinterpret_cast<const char*>(searchBytes.data()), searchBytes.size());
+    std::istrstream istream(reinterpret_cast<const char*>(searchBytes.data()), static_cast<int>(searchBytes.size()));
     const std::string address = computeStreamAddress(istream, true);
     std::vector<unsigned char> contentBytes;
     VectorOStream ostream(contentBytes);

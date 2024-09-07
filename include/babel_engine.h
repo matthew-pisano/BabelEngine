@@ -14,6 +14,7 @@ namespace Babel {
     // Build the charset for base 256
     inline std::vector<unsigned char> build256Charset() {
      std::vector<unsigned char> charset;
+     charset.reserve(256);
      for (int i = 0; i < 256; ++i) charset.push_back(i);
      return charset;
     }
