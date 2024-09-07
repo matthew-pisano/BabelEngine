@@ -1,10 +1,12 @@
 # Babel Engine library
 
-A C++ static library for assigning an address to an arbitrary sequence of bytes and being able to retrieve the original sequence from the address.  This behavior mimics the behavior of the original *Library of Babel* website.
+A C++ static library for assigning an address to an *arbitrary sequence of bytes* and being able to retrieve the original sequence from the address.  This library mimics the behavior of the original [*Library of Babel*](https://libraryofbabel.info/) website.
+
+Instead of only text, this program can address and lookup any image, recording, text, or executable that is within the size of the data space.
 
 ## Usage
 
-This library can be included within a project by either including the source files within the project or by linking against the static library.  Its API is defined in the `babel_engine.h` header file and exposes the Babel namespace with the following functions:
+This library can be included within a project by either including the source files directly or by linking against the static library that this project generates.  Its API is defined in the `babel_engine.h` header file and exposes the `Babel` namespace with the following functions:
 
 ```cpp
 // Get the decomposed components of an address
@@ -29,7 +31,7 @@ void Babel::searchStream(const std::string &address, std::ostream &stream);
 
 ## Address Space
 
-All addresses are encoded in standard base64.  Their length is fixed, but depends on the size of the input space (the maximum number of bytes in the input sequence that it is compiled with).  These address can easily be store within strings and displayed.  Even very short addresses can reference a large byte sequence.
+All addresses are encoded in standard base64.  Their length is fixed, but depends on the size of the input space (the maximum number of bytes in the input sequence that this library is compiled with).  These address can easily be store within strings and displayed.  Even very short addresses can reference a large byte sequence.
 
 Addresses are composed similarly to those of the original *Library of Babel* website.  They are composed of the following components, delimited by colons:
 

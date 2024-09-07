@@ -210,6 +210,7 @@ TEST_CASE("Test Address Search Consistency") {
     const std::vector<unsigned char> first_content = search(address);
     const std::vector<unsigned char> second_content = search(address);
 
+    REQUIRE(first_content.size() == MAX_PAGE_LEN);
     REQUIRE( first_content == second_content );
 }
 
