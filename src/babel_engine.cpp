@@ -16,15 +16,20 @@ using random_bytes_engine = std::independent_bits_engine<
 
 
 /**
- * Find the index of a value in a vector
+ * Find the index of a value in the charset for the given base
  * @param val The char to get the index of
- * @return The index of the value in the vector
+ * @param base The base of the charset
+ * @return The index of the value in the charset
  */
 int charToIndex(const unsigned char &val, const int base) {
     if (base == 256) return val;
 
-    for (int i = 0; i < BASE64_CHARSET.size(); ++i)
-        if (BASE64_CHARSET[i] == val) return i;
+    if (val > 47 && val < 58) return val + 4;  // 0-9
+    if (val > 64 && val < 91) return val - 65;  // A-Z
+    if (val > 96 && val < 123) return val - 71;  // a-z
+    if (val == 43) return 62;  // +
+    if (val == 47) return 63;  // /
+
     throw std::invalid_argument("Value not found in address charset: "+std::to_string(val));
 }
 
@@ -35,6 +40,68 @@ int charToIndex(const unsigned char &val, const int base) {
 mpz_class makeCoordSeed(const LibraryCoordinate& coord) {
     // Certain numbers crash mpz_set_str() without first using std::stoi()
     return {std::stoi(coord.page + coord.volume + coord.shelf + coord.wall)};
+}
+
+
+/**
+ * Ensure the length of the data is equal to the maximum page length
+ * @param data The data to fit
+ * @param padRandom Whether to pad with random bytes, otherwise pad with zeros
+ * @return The data padded or truncated to the maximum page length
+ */
+std::vector<unsigned char> fitData(const std::vector<unsigned char> &data, const bool padRandom) {
+    if (data.size() >= MAX_PAGE_LEN) {
+        // Truncate the result
+        return {data.begin(), data.begin() + MAX_PAGE_LEN};
+    }
+
+    if (!padRandom) {
+        // Pad the result with zeroes
+        std::vector result(data);
+        result.resize(MAX_PAGE_LEN, 0);
+        return result;
+    }
+
+    std::vector<unsigned char> result(MAX_PAGE_LEN);
+    // Generate random data to pad the result
+    std::random_device rd;
+    std::mt19937 generator(rd());
+    std::uniform_int_distribution<int> placementDistrib(0, MAX_PAGE_LEN - static_cast<int>(data.size()) - 1);
+    const int placement = placementDistrib(generator);
+
+    random_bytes_engine randGenerator(rd());
+    // Add header of random size
+    std::generate_n(begin(result), placement, std::ref(randGenerator));
+    // Add the data
+    std::copy(data.begin(), data.end(), result.begin() + placement);
+    // Add footer of random size
+    std::generate_n(begin(result) + placement + static_cast<int>(data.size()), MAX_PAGE_LEN - placement - data.size(), std::ref(randGenerator));
+    return result;
+}
+
+
+/**
+ * Ensure the length of the address greater than or equal to the minimum address length
+ * @param hexAddress The address to fit
+ * @return The address padded to the minimum address length
+ */
+std::vector<unsigned char> fitAddress(const std::string& hexAddress) {
+    std::vector<unsigned char> addrVec = {hexAddress.begin(), hexAddress.end()};
+    if (static_cast<double>(hexAddress.length()) >= MIN_ADDRESS_LEN)
+        return addrVec;
+
+    std::hash<std::string> hasher;
+    const size_t addrSeed = hasher(hexAddress);
+
+    // Generate a random integer between 1 and maxValue inclusive
+    std::uniform_int_distribution<> dist(0, 63);
+
+    addrVec.resize(static_cast<int>(MIN_ADDRESS_LEN), 0);
+    for (size_t i = hexAddress.length(); i < MIN_ADDRESS_LEN; i++) {
+        std::mt19937 gen(addrSeed + i);
+        addrVec[i] = BASE64_CHARSET[dist(gen)];
+    }
+    return addrVec;
 }
 
 
@@ -83,6 +150,12 @@ LibraryCoordinate Babel::getAddressComponents(const std::string &address) {
     std::getline(ss, coord.volume, ':');
     std::getline(ss, coord.page, ':');
 
+    // Check if the address components are within the valid range
+    if (std::stoi(coord.wall) > WALLS_PER_HEXAGON) throw std::invalid_argument("Wall out of range: "+coord.wall);
+    if (std::stoi(coord.shelf) > SHELVES_PER_WALL) throw std::invalid_argument("Shelf out of range: "+coord.shelf);
+    if (std::stoi(coord.volume) > VOLUMES_PER_SHELF) throw std::invalid_argument("Volume out of range: "+coord.volume);
+    if (std::stoi(coord.page) > PAGES_PER_VOLUME) throw std::invalid_argument("Page out of range: "+coord.page);
+
     // Pad the volume and page with zeros
     while (coord.volume.length() < 2) coord.volume = "0" + coord.volume;
     while (coord.page.length() < 3) coord.page = "0" + coord.page;
@@ -130,38 +203,8 @@ mpz_class Babel::baseToNum(const std::vector<unsigned char> &vec, const int base
 }
 
 
-std::vector<unsigned char> fitToLength(const std::vector<unsigned char> &data, const int length, const bool padRandom) {
-    if (data.size() >= length) {
-        // Truncate the result
-        return {data.begin(), data.begin() + length};
-    }
-
-    if (!padRandom) {
-        // Pad the result with zeroes
-        std::vector result(data);
-        result.resize(length, 0);
-        return result;
-    }
-
-    std::vector<unsigned char> result(length);
-    // Generate random data to pad the result
-    std::mt19937 generator(data.size());
-    std::uniform_int_distribution<int> placementDistrib(0, length - static_cast<int>(data.size()) - 1);
-    const int placement = placementDistrib(generator);
-
-    random_bytes_engine randGenerator;
-    // Add header of random size
-    std::generate_n(begin(result), placement, std::ref(randGenerator));
-    // Add the data
-    std::copy(data.begin(), data.end(), result.begin() + placement);
-    // Add footer of random size
-    std::generate_n(begin(result) + placement + data.size(), length - placement - data.size(), std::ref(randGenerator));
-    return result;
-}
-
-
 std::string Babel::computeAddress(const std::vector<unsigned char>& data, const bool padRandom) {
-    const std::vector<unsigned char> paddedData = fitToLength(data, MAX_PAGE_LEN, padRandom);
+    const std::vector<unsigned char> paddedData = fitData(data, padRandom);
 
     // Convert data to a number
     mpz_class dataSum = {0};
@@ -190,14 +233,16 @@ std::string Babel::computeStreamAddress(std::istream& stream, const bool padRand
 
 std::vector<unsigned char> Babel::search(const std::string &address) {
     LibraryCoordinate coord = getAddressComponents(address);
+    const std::vector<unsigned char> addrVec = fitAddress(coord.hexagon);  // Fit address to avoid predictable looking addressed data
+    const mpz_class numericalAddr = baseToNum(addrVec, 64);
 
     mpz_class mult;
     mpz_class bigBase = {256};
     // Exponentiate the base to the maximum page length and store the result in mult
     mpz_pow_ui(mult.get_mpz_t(), bigBase.get_mpz_t(), MAX_PAGE_LEN);
 
-    const mpz_class numericalAddr = baseToNum({coord.hexagon.begin(), coord.hexagon.end()}, 64);
-    const mpz_class seed = numericalAddr - makeCoordSeed(coord) * mult;
+    const mpz_class coordSeed = makeCoordSeed(coord);
+    const mpz_class seed = numericalAddr - coordSeed * mult;
     // Convert the address base-encoded text to the text charset
     std::vector<unsigned char> resultText = numToBase(seed, 256);
 

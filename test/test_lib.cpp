@@ -146,10 +146,10 @@ TEST_CASE("Test baseToNum") {
 
 TEST_CASE("Test getAddressComponents") {
 
-    const std::string address = "simpleaddress:3322:4:4:300";
+    const std::string address = "simpleaddress:2:4:4:300";
     LibraryCoordinate coord = getAddressComponents(address);
     REQUIRE( coord.hexagon == "simpleaddress" );
-    REQUIRE( coord.wall == "3322" );
+    REQUIRE( coord.wall == "2" );
     REQUIRE( coord.shelf == "4" );
     REQUIRE( coord.volume == "04" );
     REQUIRE( coord.page == "300" );
@@ -237,13 +237,13 @@ TEST_CASE("Test Compute Address") {
 
     const std::string searchStr = "hello there general kenobi";
     const std::string address = computeAddress({searchStr.begin(), searchStr.end()}, true);
-    REQUIRE( !address.empty() );
+    REQUIRE( address.length() >= MIN_ADDRESS_LEN );
 }
 
 
 TEST_CASE("Test Search") {
 
-    const std::string address = "simpleaddress:332:4:4:300";
+    const std::string address = "simpleaddress:2:4:24:300";
     const std::vector<unsigned char> content = search(address);
     REQUIRE( content.size() == MAX_PAGE_LEN );
 }

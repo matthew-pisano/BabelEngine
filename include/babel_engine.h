@@ -20,7 +20,8 @@ namespace Babel {
     }
     inline std::vector<unsigned char> BASE256_CHARSET = build256Charset();
 
-    constexpr int MAX_PAGE_LEN = 1024 * 100;
+    constexpr int MAX_PAGE_LEN = 1024 * 64;
+    constexpr int MIN_ADDRESS_LEN = MAX_PAGE_LEN * 4 / 3;
 
     constexpr int WALLS_PER_HEXAGON = 4;
     constexpr int SHELVES_PER_WALL = 5;
